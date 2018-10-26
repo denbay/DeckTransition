@@ -25,8 +25,6 @@ final class DeckPresentationController: UIPresentationController, UIGestureRecog
     // MARK: - Private variables
     
     private var isSwipeToDismissGestureEnabled = true
-    private var pan: UIPanGestureRecognizer?
-    private var scrollViewUpdater: ScrollViewUpdater?
     
     private let backgroundView = UIView()
     private let roundedViewForPresentingView = RoundedView()
@@ -259,14 +257,6 @@ final class DeckPresentationController: UIPresentationController, UIGestureRecog
             roundedViewForPresentingView.bottomAnchor.constraint(equalTo: snapshotViewContainer.bottomAnchor)
         ])
         
-        if isSwipeToDismissGestureEnabled {
-            pan = UIPanGestureRecognizer(target: self, action: #selector(handlePan))
-            pan!.delegate = self
-            pan!.maximumNumberOfTouches = 1
-            pan!.cancelsTouchesInView = false
-            presentedViewController.view.addGestureRecognizer(pan!)
-        }
-
         presentCompletion?(completed)
     }
 	
@@ -545,54 +535,7 @@ final class DeckPresentationController: UIPresentationController, UIGestureRecog
         
         dismissCompletion?(completed)
     }
-    
-    // MARK: - Gesture handling
-    
-    private func isSwipeToDismissAllowed() -> Bool {
-        guard let updater = scrollViewUpdater else {
-            return isSwipeToDismissGestureEnabled
-        }
         
-        return updater.isDismissEnabled
-    }
-    
-    @objc private func handlePan(gestureRecognizer: UIPanGestureRecognizer) {
-        guard gestureRecognizer.isEqual(pan), isSwipeToDismissGestureEnabled else {
-            return
-        }
-        
-        switch gestureRecognizer.state {
-        
-        case .began:
-            let detector = ScrollViewDetector(withViewController: presentedViewController)
-            if let scrollView = detector.scrollView {
-                scrollViewUpdater = ScrollViewUpdater(
-                    withRootView: presentedViewController.view,
-                    scrollView: scrollView)
-            }
-            gestureRecognizer.setTranslation(CGPoint(x: 0, y: 0), in: containerView)
-        
-        case .changed:
-            if isSwipeToDismissAllowed() {
-                let translation = gestureRecognizer.translation(in: presentedView)
-                updatePresentedViewForTranslation(inVerticalDirection: translation.y)
-            } else {
-                gestureRecognizer.setTranslation(.zero, in: presentedView)
-            }
-        
-        case .ended:
-            UIView.animate(
-                withDuration: 0.25,
-                animations: {
-                    self.presentedView?.transform = .identity
-                })
-            scrollViewUpdater = nil
-
-        default: break
-        
-        }
-    }
-    
     /// Method to update the modal view for a particular amount of translation
     /// by panning in the vertical direction.
     ///
@@ -632,16 +575,6 @@ final class DeckPresentationController: UIPresentationController, UIGestureRecog
                 presentedViewController.dismiss(animated: true, completion: nil)
             }
         }
-    }
-    
-    // MARK: - UIGestureRecognizerDelegate methods
-    
-    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
-        guard gestureRecognizer.isEqual(pan) else {
-            return false
-        }
-        
-        return true
     }
     
 }
